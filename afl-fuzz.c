@@ -52,6 +52,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <math.h>
 
 
 #include <sys/wait.h>
@@ -298,6 +299,7 @@ static u32 vanilla_afl = 1000;      /* @RB@ How many executions to conduct
                                          in vanilla AFL mode               */
 static u32 MAX_RARE_BRANCHES = 256;
 static int rare_branch_exp = 4;        /* @RB@ less than 2^rare_branch_exp is rare*/
+static int rare_branch_concurrence_score = 100;
 
 static int * blacklist; 
 static int blacklist_size = 1024;
@@ -887,6 +889,12 @@ static int contains_id(int branch_id, int* branch_ids){
   return 0; 
 }
 
+
+static float calc_concurrence_score(int a, int b) {
+  int N = 10;
+  return a + N * sqrt(1/b);
+}
+
 /* you'll have to free the return pointer. */
 static int* get_lowest_hit_branch_ids(){
   int * rare_branch_ids = ck_alloc(sizeof(int) * MAX_RARE_BRANCHES);
@@ -898,35 +906,46 @@ static int* get_lowest_hit_branch_ids(){
     if (unlikely(hit_bits[i] > 0)){
       if (contains_id(i, blacklist)) continue;
       unsigned int long cur_hits = hit_bits[i];
+      unsigned int long cur_new_hits = hit_new_bits[i];
       int highest_order_bit = 0;
+      int highest_order_new_bit = 0;
       while(cur_hits >>=1)
-          highest_order_bit++;
-      lowest_hob = highest_order_bit < lowest_hob ? highest_order_bit : lowest_hob;
-      if (highest_order_bit < rare_branch_exp){
-        // if we are an order of magnitude smaller, prioritize the
-        // rarer branches
-        if (highest_order_bit < rare_branch_exp - 1){
-          rare_branch_exp = highest_order_bit + 1;
-          // everything else that came before had way more hits
-          // than this one, so remove from list
-          ret_list_size = 0;
-        }
+        highest_order_bit++;
+      while(cur_new_hits >>=1)
+        highest_order_new_bit++;
+      float concurrence_score = calc_concurrence_score(highest_order_bit, highest_order_new_bit);
+      if (concurrence_score < rare_branch_concurrence_score) {
         rare_branch_ids[ret_list_size] = i;
         ret_list_size++;
       }
 
+      // lowest_hob = highest_order_bit < lowest_hob ? highest_order_bit : lowest_hob;
+      // if (highest_order_bit < rare_branch_exp){
+      //   // if we are an order of magnitude smaller, prioritize the
+      //   // rarer branches
+      //   if (highest_order_bit < rare_branch_exp - 1){
+      //     rare_branch_exp = highest_order_bit + 1;
+      //     // everything else that came before had way more hits
+      //     // than this one, so remove from list
+      //     ret_list_size = 0;
+      //   }
+      //   rare_branch_ids[ret_list_size] = i;
+      //   ret_list_size++;
+      // }
+
     }
   }
 
-  if (ret_list_size == 0){
-    DEBUG1("Was returning list of size 0\n");
-    if (lowest_hob != INT_MAX) {
-      rare_branch_exp = lowest_hob + 1;
-      DEBUG1("Upped max exp to %i\n", rare_branch_exp);
-      ck_free(rare_branch_ids);
-      return get_lowest_hit_branch_ids();
-    }
-  }
+  // JC: fix it later
+  // if (ret_list_size == 0){
+  //   DEBUG1("Was returning list of size 0\n");
+  //   if (lowest_hob != INT_MAX) {
+  //     rare_branch_exp = lowest_hob + 1;
+  //     DEBUG1("Upped max exp to %i\n", rare_branch_exp);
+  //     ck_free(rare_branch_ids);
+  //     return get_lowest_hit_branch_ids();
+  //   }
+  // }
 
   rare_branch_ids[ret_list_size] = -1;
   return rare_branch_ids;
