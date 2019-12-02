@@ -65,7 +65,8 @@
 #include <sys/file.h>
 
 
-#define JC(x) FATAL("JIAHAO: %s\n", x)
+#define JC_FATAL(x) FATAL("JIAHAO: %s\n", x)
+#define JC_LOG(x) fprintf(stderr, "JIAHAO: %s\n", x)
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined (__OpenBSD__)
 #  include <sys/sysctl.h>
@@ -3460,6 +3461,7 @@ static void increment_hit_new_bits(){
   for (int i = 0; i < MAP_SIZE; i++){
     if ((trace_bits[i] > 0) && (hit_new_bits[i] < ULONG_MAX))
       hit_new_bits[i]++;
+      JC_LOG("shit!");
   }
 }
 
@@ -8976,7 +8978,7 @@ int main(int argc, char** argv) {
   if (in_place_resume) {
     vanilla_afl = 0;
     init_hit_bits();
-    JC("NOT SUPPORTED!");
+    JC_FATAL("NOT SUPPORTED!");
   }
 
   setup_dirs_fds();
