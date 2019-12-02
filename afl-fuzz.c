@@ -151,6 +151,8 @@ EXP_ST u8* trace_bits;                /* SHM with instrumentation bitmap  */
 
 static u64 hit_bits[MAP_SIZE];        /* @RB@ Hits to every basic block transition */
 static u64 hit_new_bits[MAP_SIZE]; 
+static u64 action_bits[MAP_SIZE];
+static u64 action_num_total;
 
 EXP_ST u8  virgin_bits[MAP_SIZE],     /* Regions yet untouched by fuzzing */
            virgin_tmout[MAP_SIZE],    /* Bits we haven't seen in tmouts   */
@@ -890,9 +892,9 @@ static int contains_id(int branch_id, int* branch_ids){
 }
 
 
-static float calc_concurrence_score(int a, int b) {
+static double calc_concurrence_score(int total_hits, int reward, int action_num) {
   int N = 10;
-  return a + N * sqrt(1/b);
+  return reward / action_num + N * sqrt(log(action_num_total) / action_num);
 }
 
 /* you'll have to free the return pointer. */
@@ -901,19 +903,21 @@ static int* get_lowest_hit_branch_ids(){
   int lowest_hob = INT_MAX;
   int ret_list_size = 0;
 
+  action_num_total++;
   for (int i = 0; (i < MAP_SIZE) && (ret_list_size < MAX_RARE_BRANCHES - 1); i++){
     // ignore unseen branches. sparse array -> unlikely 
     if (unlikely(hit_bits[i] > 0)){
       if (contains_id(i, blacklist)) continue;
       unsigned int long cur_hits = hit_bits[i];
       unsigned int long cur_new_hits = hit_new_bits[i];
-      int highest_order_bit = 0;
-      int highest_order_new_bit = 0;
-      while(cur_hits >>=1)
-        highest_order_bit++;
-      while(cur_new_hits >>=1)
-        highest_order_new_bit++;
-      float concurrence_score = calc_concurrence_score(highest_order_bit, highest_order_new_bit);
+      unsigned int long action_num = action_bits[i];
+      // int highest_order_bit = 0;
+      // int highest_order_new_bit = 0;
+      // while(cur_hits >>=1)
+        // highest_order_bit++;
+      // while(cur_new_hits >>=1)
+        // highest_order_new_bit++;
+      double concurrence_score = calc_concurrence_score(cur_hits, cur_new_hits, action_num);
       if (concurrence_score < rare_branch_concurrence_score) {
         rare_branch_ids[ret_list_size] = i;
         ret_list_size++;
@@ -937,15 +941,15 @@ static int* get_lowest_hit_branch_ids(){
   }
 
   // JC: fix it later
-  // if (ret_list_size == 0){
-  //   DEBUG1("Was returning list of size 0\n");
-  //   if (lowest_hob != INT_MAX) {
-  //     rare_branch_exp = lowest_hob + 1;
-  //     DEBUG1("Upped max exp to %i\n", rare_branch_exp);
-  //     ck_free(rare_branch_ids);
-  //     return get_lowest_hit_branch_ids();
-  //   }
-  // }
+  if (ret_list_size == 0){
+    DEBUG1("Was returning list of size 0\n");
+    if (lowest_hob != INT_MAX) {
+      rare_branch_exp = lowest_hob + 1;
+      DEBUG1("Upped max exp to %i\n", rare_branch_exp);
+      ck_free(rare_branch_ids);
+      return get_lowest_hit_branch_ids();
+    }
+  }
 
   rare_branch_ids[ret_list_size] = -1;
   return rare_branch_ids;
@@ -8995,6 +8999,7 @@ int main(int argc, char** argv) {
 
   memset(hit_bits, 0, sizeof(hit_bits));
   memset(hit_new_bits, 0, sizeof(hit_new_bits));
+  memset(action_bits, 0, sizeof(action_bits));
   if (in_place_resume) {
     vanilla_afl = 0;
     init_hit_bits();
