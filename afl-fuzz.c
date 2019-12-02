@@ -64,6 +64,9 @@
 #include <sys/ioctl.h>
 #include <sys/file.h>
 
+
+#define JC(x) FATAL("JIAHAO: %s\n", x)
+
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined (__OpenBSD__)
 #  include <sys/sysctl.h>
 #endif /* __APPLE__ || __FreeBSD__ || __OpenBSD__ */
@@ -145,6 +148,7 @@ static s32 forksrv_pid,               /* PID of the fork server           */
 EXP_ST u8* trace_bits;                /* SHM with instrumentation bitmap  */
 
 static u64 hit_bits[MAP_SIZE];        /* @RB@ Hits to every basic block transition */
+static u64 hit_new_bits[MAP_SIZE]; 
 
 EXP_ST u8  virgin_bits[MAP_SIZE],     /* Regions yet untouched by fuzzing */
            virgin_tmout[MAP_SIZE],    /* Bits we haven't seen in tmouts   */
@@ -3452,6 +3456,13 @@ static void increment_hit_bits(){
   }
 }
 
+static void increment_hit_new_bits(){
+  for (int i = 0; i < MAP_SIZE; i++){
+    if ((trace_bits[i] > 0) && (hit_new_bits[i] < ULONG_MAX))
+      hit_new_bits[i]++;
+  }
+}
+
 /* Check if the result of an execve() during routine fuzzing is interesting,
    save or queue the input test case for further analysis if so. Returns 1 if
    entry is saved, 0 otherwise. */
@@ -3469,7 +3480,10 @@ static u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
   if (fault == crash_mode) {
 
     /* @RB@ in shadow mode, don't increment hit bits*/
-    if (!shadow_mode) increment_hit_bits();	
+    if (!shadow_mode) {
+      increment_hit_bits();	
+      increment_hit_new_bits();
+    }
 
     /* Keep only if there are new bits in the map, add to queue for
        future fuzzing, etc. */
@@ -3477,7 +3491,7 @@ static u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
     if (!(hnb = has_new_bits(virgin_bits))) {
       if (crash_mode) total_crashes++;
       return 0;
-    }   
+    }
 
 #ifndef SIMPLE_FILES
 
@@ -8958,9 +8972,11 @@ int main(int argc, char** argv) {
   init_count_class16();
 
   memset(hit_bits, 0, sizeof(hit_bits));
+  memset(hit_new_bits, 0, sizeof(hit_new_bits));
   if (in_place_resume) {
     vanilla_afl = 0;
     init_hit_bits();
+    JC("NOT SUPPORTED!");
   }
 
   setup_dirs_fds();
