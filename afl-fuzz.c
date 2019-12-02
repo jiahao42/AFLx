@@ -894,7 +894,7 @@ static int contains_id(int branch_id, int* branch_ids){
 
 static double calc_concurrence_score(int total_hits, int reward, int action_num) {
   int N = 10;
-  return reward / action_num + N * sqrt(log(action_num_total + 1) / (action_num + 1));
+  return reward / (action_num + 1) + N * sqrt(log(action_num_total + 1.0) / (action_num + 1.0));
 }
 
 /* you'll have to free the return pointer. */
