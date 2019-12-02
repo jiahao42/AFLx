@@ -902,6 +902,8 @@ static int* get_lowest_hit_branch_ids(){
   int * rare_branch_ids = ck_alloc(sizeof(int) * MAX_RARE_BRANCHES);
   int lowest_hob = INT_MAX;
   int ret_list_size = 0;
+  double max_score = INT_MIN;
+  int picked_id = 0;
 
   action_num_total++;
   for (int i = 0; (i < MAP_SIZE) && (ret_list_size < MAX_RARE_BRANCHES - 1); i++){
@@ -911,34 +913,14 @@ static int* get_lowest_hit_branch_ids(){
       unsigned int long cur_hits = hit_bits[i];
       unsigned int long cur_new_hits = hit_new_bits[i];
       unsigned int long action_num = action_bits[i];
-      // int highest_order_bit = 0;
-      // int highest_order_new_bit = 0;
-      // while(cur_hits >>=1)
-        // highest_order_bit++;
-      // while(cur_new_hits >>=1)
-        // highest_order_new_bit++;
       double concurrence_score = calc_concurrence_score(cur_hits, cur_new_hits, action_num);
-      if (concurrence_score < rare_branch_concurrence_score) {
-        rare_branch_ids[ret_list_size] = i;
-        ret_list_size++;
+      if (concurrence_score > max_score) { // keep looking for branch with max score
+        max_score = concurrence_score;
+        picked_id = i;
       }
-
-      // lowest_hob = highest_order_bit < lowest_hob ? highest_order_bit : lowest_hob;
-      // if (highest_order_bit < rare_branch_exp){
-      //   // if we are an order of magnitude smaller, prioritize the
-      //   // rarer branches
-      //   if (highest_order_bit < rare_branch_exp - 1){
-      //     rare_branch_exp = highest_order_bit + 1;
-      //     // everything else that came before had way more hits
-      //     // than this one, so remove from list
-      //     ret_list_size = 0;
-      //   }
-      //   rare_branch_ids[ret_list_size] = i;
-      //   ret_list_size++;
-      // }
-
     }
   }
+  rare_branch_ids[ret_list_size++] = picked_id;
 
   // JC: fix it later
   if (ret_list_size == 0){
