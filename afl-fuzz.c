@@ -894,7 +894,7 @@ static int contains_id(int branch_id, int* branch_ids){
 
 static double calc_concurrence_score(int total_hits, int reward, int action_num) {
   int N = 10;
-  return reward / (action_num + 1) + N * sqrt(log(action_num_total + 1.0) / (action_num + 1.0));
+  return reward / (action_num + 1.0) + N * sqrt(log(action_num_total + 1.0) / (action_num + 1.0));
 }
 
 /* you'll have to free the return pointer. */
@@ -903,7 +903,7 @@ static int* get_lowest_hit_branch_ids(){
   int lowest_hob = INT_MAX;
   int ret_list_size = 0;
   double max_score = INT_MIN;
-  int picked_id = 0;
+  int picked_id = -1;
 
   action_num_total++;
   for (int i = 0; (i < MAP_SIZE) && (ret_list_size < MAX_RARE_BRANCHES - 1); i++){
@@ -920,22 +920,10 @@ static int* get_lowest_hit_branch_ids(){
       }
     }
   }
+  action_bits[picked_id]++; // pick this branch
   rare_branch_ids[ret_list_size++] = picked_id;
-
-  // JC: fix it later
-  if (ret_list_size == 0){
-    DEBUG1("Was returning list of size 0\n");
-    if (lowest_hob != INT_MAX) {
-      rare_branch_exp = lowest_hob + 1;
-      DEBUG1("Upped max exp to %i\n", rare_branch_exp);
-      ck_free(rare_branch_ids);
-      return get_lowest_hit_branch_ids();
-    }
-  }
-
   rare_branch_ids[ret_list_size] = -1;
   return rare_branch_ids;
-
 }
 
 /* return 0 if current trace bits hits branch with id branch_id,
