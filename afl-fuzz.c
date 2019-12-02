@@ -3455,14 +3455,15 @@ static void increment_hit_bits(){
     if ((trace_bits[i] > 0) && (hit_bits[i] < ULONG_MAX))
       hit_bits[i]++;
   }
+  JC_LOG("fuck!");
 }
 
 static void increment_hit_new_bits(){
   for (int i = 0; i < MAP_SIZE; i++){
     if ((trace_bits[i] > 0) && (hit_new_bits[i] < ULONG_MAX))
       hit_new_bits[i]++;
-      JC_LOG("shit!");
   }
+  JC_LOG("shit!");
 }
 
 /* Check if the result of an execve() during routine fuzzing is interesting,
@@ -3482,10 +3483,7 @@ static u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
   if (fault == crash_mode) {
 
     /* @RB@ in shadow mode, don't increment hit bits*/
-    if (!shadow_mode) {
-      increment_hit_bits();	
-      increment_hit_new_bits();
-    }
+    if (!shadow_mode) increment_hit_bits();	
 
     /* Keep only if there are new bits in the map, add to queue for
        future fuzzing, etc. */
@@ -3494,6 +3492,9 @@ static u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
       if (crash_mode) total_crashes++;
       return 0;
     }
+
+    // meet new branch
+    if (!shadow_mode) increment_hit_new_bits();
 
 #ifndef SIMPLE_FILES
 
