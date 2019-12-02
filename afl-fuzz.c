@@ -892,9 +892,11 @@ static int contains_id(int branch_id, int* branch_ids){
 }
 
 
-static double calc_concurrence_score(int total_hits, int reward, int action_num) {
-  int N = 10;
-  return reward / (action_num + 1.0) + N * sqrt(log(action_num_total + 1.0) / (action_num + 1.0));
+static double calc_concurrence_score(int total_hits, int reward, int action_num, int cur_index) {
+  int N = 5;
+  double score = reward / (action_num + 1.0) + N * sqrt(log(action_num_total + 1.0) / (action_num + 1.0));
+  fprintf(stderr, "%lld:%d: %f\n", action_num_total, cur_index, score);
+  return score;
 }
 
 /* you'll have to free the return pointer. */
@@ -913,7 +915,7 @@ static int* get_lowest_hit_branch_ids(){
       unsigned int long cur_hits = hit_bits[i];
       unsigned int long cur_new_hits = hit_new_bits[i];
       unsigned int long action_num = action_bits[i];
-      double concurrence_score = calc_concurrence_score(cur_hits, cur_new_hits, action_num);
+      double concurrence_score = calc_concurrence_score(cur_hits, cur_new_hits, action_num, i);
       if (concurrence_score > max_score) { // keep looking for branch with max score
         max_score = concurrence_score;
         picked_id = i;
@@ -3448,7 +3450,7 @@ static void increment_hit_bits(){
     if ((trace_bits[i] > 0) && (hit_bits[i] < ULONG_MAX))
       hit_bits[i]++;
   }
-  JC_LOG("fuck!");
+  /*JC_LOG("fuck!");*/
 }
 
 static void increment_hit_new_bits(){
@@ -3456,7 +3458,7 @@ static void increment_hit_new_bits(){
     if ((trace_bits[i] > 0) && (hit_new_bits[i] < ULONG_MAX))
       hit_new_bits[i]++;
   }
-  JC_LOG("shit!");
+  /*JC_LOG("shit!");*/
 }
 
 /* Check if the result of an execve() during routine fuzzing is interesting,
