@@ -299,9 +299,9 @@ static u8* (*post_handler)(u8* buf, u32* len);
 
 static u32 vanilla_afl = 1000;      /* @RB@ How many executions to conduct 
                                          in vanilla AFL mode               */
-static u32 MAX_RARE_BRANCHES = 256;
+static u32 MAX_RARE_BRANCHES = 32;
 static int rare_branch_exp = 4;        /* @RB@ less than 2^rare_branch_exp is rare*/
-static int rare_branch_concurrence_score = 100;
+// static int rare_branch_concurrence_score = 100;
 
 static int * blacklist; 
 static int blacklist_size = 1024;
@@ -895,17 +895,17 @@ static int contains_id(int branch_id, int* branch_ids){
 static double calc_concurrence_score(int total_hits, int reward, int action_num, int cur_index) {
   int N = 5;
   double score = reward / (action_num + 1.0) + N * sqrt(log(action_num_total + 1.0) / (action_num + 1.0));
-  fprintf(stderr, "%lld:%d: %f\n", action_num_total, cur_index, score);
+  // fprintf(stderr, "%lld:%d: %f\n", action_num_total, cur_index, score);
   return score;
 }
 
 /* you'll have to free the return pointer. */
 static int* get_lowest_hit_branch_ids(){
   int * rare_branch_ids = ck_alloc(sizeof(int) * MAX_RARE_BRANCHES);
-  int lowest_hob = INT_MAX;
+  // int lowest_hob = INT_MAX;
   int ret_list_size = 0;
   double max_score = INT_MIN;
-  int picked_id = -1;
+  // int picked_id = -1;
 
   action_num_total++;
   for (int i = 0; (i < MAP_SIZE) && (ret_list_size < MAX_RARE_BRANCHES - 1); i++){
@@ -917,13 +917,16 @@ static int* get_lowest_hit_branch_ids(){
       unsigned int long action_num = action_bits[i];
       double concurrence_score = calc_concurrence_score(cur_hits, cur_new_hits, action_num, i);
       if (concurrence_score > max_score) { // keep looking for branch with max score
+        memmove(rare_branch_ids + 1, rare_branch_ids, ret_list_size);
+        rare_branch_ids[0] = i;
+        ret_list_size++;
         max_score = concurrence_score;
-        picked_id = i;
+        // picked_id = i;
       }
     }
   }
-  action_bits[picked_id]++; // pick this branch
-  rare_branch_ids[ret_list_size++] = picked_id;
+  // action_bits[picked_id]++; // pick this branch
+  // rare_branch_ids[ret_list_size++] = picked_id;
   rare_branch_ids[ret_list_size] = -1;
   return rare_branch_ids;
 }
