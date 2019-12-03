@@ -9123,13 +9123,13 @@ stop_fuzzing:
 
   alloc_report();
 
-  unsigned long trans = 0;
-  for (int i = 0; i < MAP_SIZE; i++) {
-    if (!virgin_bits[i]) {
-      trans++;
-    }
-  }
-  printf("!!! Total number of block transition is: %ld\n\n", trans);
+  // unsigned long trans = 0;
+  // for (int i = 0; i < MAP_SIZE; i++) {
+  //   if (!virgin_bits[i]) {
+  //     trans++;
+  //   }
+  // }
+  printf("!!! Total number of block transition is: %ld\n\n", count_non_255_bytes(virgin_bits));
   OKF("We're done here. Have a nice day!\n");
 
   exit(0);
