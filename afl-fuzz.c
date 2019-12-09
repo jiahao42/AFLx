@@ -299,7 +299,7 @@ static u8* (*post_handler)(u8* buf, u32* len);
 
 static u32 vanilla_afl = 1000;      /* @RB@ How many executions to conduct 
                                          in vanilla AFL mode               */
-static u32 MAX_RARE_BRANCHES = 32;
+static u32 MAX_RARE_BRANCHES = 256;
 static int rare_branch_exp = 4;        /* @RB@ less than 2^rare_branch_exp is rare*/
 // static int rare_branch_concurrence_score = 100;
 
@@ -893,9 +893,13 @@ static int contains_id(int branch_id, int* branch_ids){
 
 
 static double calc_concurrence_score(int total_hits, int reward, int action_num, int cur_index) {
-  int N = 5;
-  double score = reward / (action_num + 1.0) + N * sqrt(log(action_num_total + 1.0) / (action_num + 1.0));
-  // fprintf(stderr, "%lld:%d: %f\n", action_num_total, cur_index, score);
+  double N = 0.8;
+  /*double first = reward / (action_num + 1.0);*/
+  double first = reward / sqrt(total_hits);
+  double second = N * log(sqrt((action_num_total) / (total_hits + 0.1)) + 1);
+  /*double second = sqrt((action_num_total + 1.0) / (action_num + 1.0));*/
+  double score = first + second;
+  /*fprintf(stderr, "%lld:%d: %f, %f, %f\n", action_num_total, cur_index, first, second, score);*/
   return score;
 }
 
@@ -907,7 +911,6 @@ static int* get_lowest_hit_branch_ids(){
   double max_score = INT_MIN;
   // int picked_id = -1;
 
-  action_num_total++;
   for (int i = 0; (i < MAP_SIZE) && (ret_list_size < MAX_RARE_BRANCHES - 1); i++){
     // ignore unseen branches. sparse array -> unlikely 
     if (unlikely(hit_bits[i] > 0)){
@@ -974,8 +977,8 @@ static u32 * is_rb_hit_mini(u8* trace_bits_mini){
             branch_cts[j] = hit_bits[cur_index];
             // + 1 so we can distinguish 0 from other cases
             branch_ids[j] = cur_index + 1;
-
           }
+          /*action_bits[i]++;*/
           // this is only incremented when is_rare holds, which should
           // only happen a max of MAX_RARE_BRANCHES -1 times -- the last
           // time we will never reenter so this is always < MAX_RARE_BRANCHES
@@ -4961,6 +4964,8 @@ EXP_ST u8 common_fuzz_stuff(char** argv, u8* out_buf, u32 len) {
     if (!out_buf || !len) return 0;
 
   }
+  action_bits[rb_fuzzing]++;
+  action_num_total++;
 
   write_to_testcase(out_buf, len);
 
